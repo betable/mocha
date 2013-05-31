@@ -57,7 +57,7 @@ program
   .version(JSON.parse(fs.readFileSync(__dirname + '/../package.json', 'utf8')).version)
   .usage('[debug] [options] [files]')
   .option('-r, --require <name>', 'require the given module')
-  .option('-R, --reporter <name>', 'specify the reporter to use', 'dot')
+  .option('-R, --reporter <name>[=<path>]', 'specify the reporter to use and optionally a path to write the output', 'dot')
   .option('-u, --ui <name>', 'specify user-interface (bdd|tdd|exports)', 'bdd')
   .option('-g, --grep <pattern>', 'only run tests matching <pattern>')
   .option('-i, --invert', 'inverts --grep matches')
@@ -166,6 +166,11 @@ try {
   // ignore
 }
 
+program.on('reporter', function (reporter) {
+    var parts = reporter.split('=')
+    mocha.add_reporter(parts[0], parts[1])
+})
+
 // parse args
 
 program.parse(process.argv);
@@ -174,25 +179,9 @@ program.parse(process.argv);
 
 Error.stackTraceLimit = Infinity; // TODO: config
 
-// reporter
-
-mocha.reporter(program.reporter);
-
 // interface
 
 mocha.ui(program.ui);
-
-// load reporter
-
-try {
-  Reporter = require('../lib/reporters/' + program.reporter);
-} catch (err) {
-  try {
-    Reporter = require(program.reporter);
-  } catch (err) {
-    throw new Error('reporter "' + program.reporter + '" does not exist');
-  }
-}
 
 // --no-colors
 
@@ -212,10 +201,6 @@ if (program.slow) mocha.suite.slow(program.slow);
 // --timeout
 
 if (program.timeout) mocha.suite.timeout(program.timeout);
-
-// --bail
-
-mocha.suite.bail(program.bail);
 
 // --grep
 
