@@ -57,7 +57,7 @@ program
   .version(JSON.parse(fs.readFileSync(__dirname + '/../package.json', 'utf8')).version)
   .usage('[debug] [options] [files]')
   .option('-r, --require <name>', 'require the given module')
-  .option('-R, --reporter <name>[=<path>]', 'specify the reporter to use and optionally a path to write the output', 'dot')
+  .option('-R, --reporter <name>', 'specify the reporter to use', 'dot')
   .option('-u, --ui <name>', 'specify user-interface (bdd|tdd|exports)', 'bdd')
   .option('-g, --grep <pattern>', 'only run tests matching <pattern>')
   .option('-i, --invert', 'inverts --grep matches')
@@ -152,27 +152,19 @@ program.on('require', function(mod){
   require(mod);
 });
 
-//MOCHA_OPTS env var support
+// mocha.opts support
+
 try {
-    process.argv = process.argv.slice(0, 2).concat(process.env.MOCHA_OPTS.trim().split(/\s+/).concat(process.argv.slice(2)))
+  var opts = fs.readFileSync('test/mocha.opts', 'utf8')
+    .trim()
+    .split(/\s+/);
 
+  process.argv = process.argv
+    .slice(0, 2)
+    .concat(opts.concat(process.argv.slice(2)));
 } catch (err) {
-    //ignore
+  // ignore
 }
-
-//test/mocha.opts file support
-try {
-    var opts = fs.readFileSync('test/mocha.opts', 'utf8').trim().split(/\s+/)
-    process.argv = process.argv.slice(0, 2).concat(opts.concat(process.argv.slice(2)))
-
-} catch (err) {
-    //ignore
-}
-
-program.on('reporter', function (reporter) {
-    var parts = reporter.split('=')
-    mocha.add_reporter(parts[0], parts[1])
-})
 
 // parse args
 
@@ -182,9 +174,25 @@ program.parse(process.argv);
 
 Error.stackTraceLimit = Infinity; // TODO: config
 
+// reporter
+
+mocha.reporter(program.reporter);
+
 // interface
 
 mocha.ui(program.ui);
+
+// load reporter
+
+try {
+  Reporter = require('../lib/reporters/' + program.reporter);
+} catch (err) {
+  try {
+    Reporter = require(program.reporter);
+  } catch (err) {
+    throw new Error('reporter "' + program.reporter + '" does not exist');
+  }
+}
 
 // --no-colors
 
@@ -204,6 +212,10 @@ if (program.slow) mocha.suite.slow(program.slow);
 // --timeout
 
 if (program.timeout) mocha.suite.timeout(program.timeout);
+
+// --bail
+
+mocha.suite.bail(program.bail);
 
 // --grep
 
