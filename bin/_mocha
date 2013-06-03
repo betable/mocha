@@ -152,18 +152,21 @@ program.on('require', function(mod){
   require(mod);
 });
 
-// mocha.opts support
-
+//MOCHA_OPTS env var support
 try {
-  var opts = fs.readFileSync('test/mocha.opts', 'utf8')
-    .trim()
-    .split(/\s+/);
+    process.argv = process.argv.slice(0, 2).concat(process.env.MOCHA_OPTS.trim().split(/\s+/).concat(process.argv.slice(2)))
 
-  process.argv = process.argv
-    .slice(0, 2)
-    .concat(opts.concat(process.argv.slice(2)));
 } catch (err) {
-  // ignore
+    //ignore
+}
+
+//test/mocha.opts file support
+try {
+    var opts = fs.readFileSync('test/mocha.opts', 'utf8').trim().split(/\s+/)
+    process.argv = process.argv.slice(0, 2).concat(opts.concat(process.argv.slice(2)))
+
+} catch (err) {
+    //ignore
 }
 
 program.on('reporter', function (reporter) {
